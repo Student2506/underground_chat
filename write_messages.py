@@ -1,9 +1,9 @@
-import aiofiles
 import asyncio
-import configargparse
-import logging
 import json
+import logging
 
+import aiofiles
+import configargparse
 
 # FORMAT_OLD = '%(asctime)s, %(levelname)s, %(message)s, %(name)s'
 FORMAT = '%(levelname)s:%(funcName)s:%(message)s'
@@ -25,24 +25,34 @@ async def register_user(options):
     log.debug(data.decode())
     writer.write((options.username + '\n\n').encode())
     data = await reader.readline()
-    log.debug(json.loads(data.decode()))
+    data = json.loads(data.decode())
+    log.debug(data)
     async with aiofiles.open('.my_settings', mode='wb') as f:
-        log.debug(f'ACCOUNT={json.loads(data.decode()).get("account_hash")}\n'.encode())
-        await f.write(f'ACCOUNT={json.loads(data.decode()).get("account_hash")}\n'.encode())
+        log.debug(f'ACCOUNT={data.get("account_hash")}\n'.encode())
+        await f.write(f'ACCOUNT={data.get("account_hash")}\n'.encode())
 
-async def write_message(options):
-    reader, writer = await asyncio.open_connection(
-        options.host, options.port 
-    )
-    await asyncio.sleep(5)
+
+async def authorize(options, reader, writer):
     data = await reader.readline()
     log.debug(data.decode())
     writer.write((options.ACCOUNT + '\n').encode())
     data = await reader.readline()
     if json.loads(data.decode()) is None:
-        log.debug('Неизвестный токен. Проверьте его или зарегистрируйте заново.\n')
-        return
+        log.debug(
+            'Неизвестный токен. Проверьте его или зарегистрируйте заново.\n'
+        )
+        return False
     log.debug(data.decode())
+    return True
+
+
+async def submit_message(options):
+    reader, writer = await asyncio.open_connection(
+        options.host, options.port
+    )
+    await asyncio.sleep(5)
+    if not await authorize(options, reader, writer):
+        return
     await asyncio.sleep(5)
     message = 'Я снова тестирую чатик. Это третье сообщение.\n\n'
     writer.write(message.encode())
@@ -58,7 +68,7 @@ async def main(options):
     if options.ACCOUNT is None:
         log.debug('Register yourself')
         return
-    write_func = loop.create_task(write_message(options))
+    write_func = loop.create_task(submit_message(options))
     await write_func
 
 
@@ -84,4 +94,3 @@ if __name__ == '__main__':
         asyncio.run(main(options))
     except KeyboardInterrupt:
         pass
-
