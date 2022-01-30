@@ -41,6 +41,9 @@ if __name__ == '__main__':
     configs.add(
         '-l', '--history', default='chat.log', help='file to log'
     )
+    configs.add(
+        '-acc', '--ACCOUNT', default=None, help='Account to use'
+    )
     options = configs.parse_args()
     try:
         asyncio.run(main(options))
