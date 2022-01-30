@@ -23,7 +23,7 @@ async def register_user(options):
     writer.write('\n'.encode())
     data = await reader.readline()
     log.debug(data.decode())
-    username = re.sub('[A-Za-z0-9]+', '', options.username)
+    username = re.sub('[^A-Za-z0-9]+', '', options.username)
     writer.write((username + '\n\n').encode())
     data = await reader.readline()
     data = json.loads(data.decode())
@@ -55,8 +55,11 @@ async def submit_message(options):
     if not await authorize(options, reader, writer):
         return
     await asyncio.sleep(5)
+    log.debug(options.message)
+    message_to_send = re.sub('[^A-Za-zА-Яа-я0-9 ]+', '', options.message)
+    log.debug(message_to_send)
     message = 'Я снова тестирую чатик. Это третье сообщение.\n\n'
-    writer.write(re.sub('[A-Za-z0-9]', '', message).encode())
+    writer.write((message_to_send+'\n\n').encode())
     writer.close()
 
 
@@ -85,10 +88,13 @@ if __name__ == '__main__':
         '-l', '--history', default='chat.log', help='file to log'
     )
     configs.add(
-        '-acc', '--ACCOUNT', default=None, help='Account to use'
+        '-acc', '--ACCOUNT', default=None, help='Token is taken from .my_settings'
     )
     configs.add(
         '-user', '--username', default=None, help='Username to use'
+    )
+    configs.add(
+        '-m', '--message', required=True, help='Text to send'
     )
     options = configs.parse_args()
     try:
