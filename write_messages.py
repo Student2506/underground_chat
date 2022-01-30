@@ -55,7 +55,6 @@ async def submit_message(options):
     if not await authorize(options, reader, writer):
         return
     await asyncio.sleep(5)
-    log.debug(options.message)
     message_to_send = re.sub('[^A-Za-zА-Яа-я0-9 ]+', '', options.message)
     log.debug(message_to_send)
     writer.write((message_to_send+'\n\n').encode())
