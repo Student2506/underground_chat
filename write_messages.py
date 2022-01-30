@@ -1,8 +1,14 @@
 import asyncio
 import configargparse
+import logging
 
 
+FORMAT = '%(asctime)s, %(levelname)s, %(message)s, %(name)s'
 ACCOUNT = '6c791ca6-81c4-11ec-8c47-0242ac110002'
+
+
+logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+log = logging.getLogger(__name__)
 
 
 async def write_message(options):
@@ -11,10 +17,10 @@ async def write_message(options):
     )
     await asyncio.sleep(5)
     data = await reader.readline()
-    print(data)
+    log.debug(data.decode())
     writer.write((ACCOUNT + '\n').encode())
     data = await reader.readline()
-    print(data.decode())
+    log.debug(data.decode())
     await asyncio.sleep(5)
     message = 'Я снова тестирую чатик. Это третье сообщение.\n\n'
     writer.write(message.encode())
