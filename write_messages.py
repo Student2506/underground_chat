@@ -58,7 +58,6 @@ async def submit_message(options):
     log.debug(options.message)
     message_to_send = re.sub('[^A-Za-zА-Яа-я0-9 ]+', '', options.message)
     log.debug(message_to_send)
-    message = 'Я снова тестирую чатик. Это третье сообщение.\n\n'
     writer.write((message_to_send+'\n\n').encode())
     writer.close()
 
@@ -88,7 +87,8 @@ if __name__ == '__main__':
         '-l', '--history', default='chat.log', help='file to log'
     )
     configs.add(
-        '-acc', '--ACCOUNT', default=None, help='Token is taken from .my_settings'
+        '-acc', '--ACCOUNT', default=None,
+        help='Token is taken from .my_settings'
     )
     configs.add(
         '-user', '--username', default=None, help='Username to use'
