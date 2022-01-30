@@ -1,11 +1,11 @@
 import asyncio
 import json
 import logging
+import re
 
 import aiofiles
 import configargparse
 
-# FORMAT_OLD = '%(asctime)s, %(levelname)s, %(message)s, %(name)s'
 FORMAT = '%(levelname)s:%(funcName)s:%(message)s'
 
 
@@ -23,7 +23,8 @@ async def register_user(options):
     writer.write('\n'.encode())
     data = await reader.readline()
     log.debug(data.decode())
-    writer.write((options.username + '\n\n').encode())
+    username = re.sub('[A-Za-z0-9]+', '', options.username)
+    writer.write((username + '\n\n').encode())
     data = await reader.readline()
     data = json.loads(data.decode())
     log.debug(data)
@@ -55,7 +56,7 @@ async def submit_message(options):
         return
     await asyncio.sleep(5)
     message = 'Я снова тестирую чатик. Это третье сообщение.\n\n'
-    writer.write(message.encode())
+    writer.write(re.sub('[A-Za-z0-9]', '', message).encode())
     writer.close()
 
 
