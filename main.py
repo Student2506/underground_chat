@@ -1,8 +1,13 @@
 import asyncio
 import datetime as dt
+import sys
 
 import aiofiles
 import configargparse
+
+if (sys.version_info[0] == 3 and sys.version_info[1] >= 8 and
+        sys.platform.startswith('win')):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
 async def read_message(options):
@@ -11,7 +16,9 @@ async def read_message(options):
     )
 
     while True:
-        async with aiofiles.open(options.history, mode='a') as f:
+        async with aiofiles.open(
+            options.history, mode='a', encoding='utf-8'
+        ) as f:
             data = await reader.readline()
             print(
                 f'{dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S")} '

@@ -2,9 +2,14 @@ import asyncio
 import json
 import logging
 import re
+import sys
 
 import aiofiles
 import configargparse
+
+if (sys.version_info[0] == 3 and sys.version_info[1] >= 8 and
+        sys.platform.startswith('win')):
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 FORMAT = '%(levelname)s:%(funcName)s:%(message)s'
 
@@ -14,6 +19,7 @@ log = logging.getLogger(__name__)
 
 
 async def register_user(options):
+    username = re.sub('[^A-Za-z0-9]+', '', options.username)
     reader, writer = await asyncio.open_connection(
         options.host, options.port
     )
@@ -23,7 +29,6 @@ async def register_user(options):
     writer.write('\n'.encode())
     data = await reader.readline()
     log.debug(data.decode())
-    username = re.sub('[^A-Za-z0-9]+', '', options.username)
     writer.write((username + '\n\n').encode())
     data = await reader.readline()
     data = json.loads(data.decode())
@@ -63,12 +68,12 @@ async def submit_message(options):
 
 async def main(options):
     loop = asyncio.get_event_loop()
-    if options.username is not None:
+    if options.username:
         register = loop.create_task(register_user(options))
         await register
         return
-    if options.ACCOUNT is None:
-        log.debug('Register yourself')
+    if not options.ACCOUNT:
+        log.debug('Требуется запуск с ключём --username')
         return
     write_func = loop.create_task(submit_message(options))
     await write_func
