@@ -18,18 +18,18 @@ logging.basicConfig(level=logging.DEBUG, format=FORMAT)
 log = logging.getLogger(__name__)
 
 
-async def register_user(options):
-    username = re.sub('[^A-Za-z0-9]+', '', options.username)
-    reader, writer = await asyncio.open_connection(
-        options.host, options.port
-    )
+async def register_user(host: str, port: int, username: str):
+    username = re.sub('[^A-Za-z0-9]+', '', username)
+    reader, writer = await asyncio.open_connection(host, port)
     await asyncio.sleep(1)
     data = await reader.readline()
     log.debug(data.decode())
     writer.write('\n'.encode())
+    await writer.drain()
     data = await reader.readline()
     log.debug(data.decode())
     writer.write((username + '\n\n').encode())
+    await writer.drain()
     data = await reader.readline()
     data = json.loads(data.decode())
     log.debug(data)
@@ -38,10 +38,11 @@ async def register_user(options):
         await f.write(f'ACCOUNT={data.get("account_hash")}\n'.encode())
 
 
-async def authorize(options, reader, writer):
+async def authorize(account, reader, writer):
     data = await reader.readline()
     log.debug(data.decode())
-    writer.write((options.ACCOUNT + '\n').encode())
+    writer.write((account + '\n').encode())
+    await writer.drain()
     data = await reader.readline()
     if json.loads(data.decode()) is None:
         log.debug(
@@ -52,30 +53,39 @@ async def authorize(options, reader, writer):
     return True
 
 
-async def submit_message(options):
-    reader, writer = await asyncio.open_connection(
-        options.host, options.port
-    )
+async def submit_message(host, port, account, message):
+    reader, writer = await asyncio.open_connection(host, port)
     await asyncio.sleep(5)
-    if not await authorize(options, reader, writer):
+    if not await authorize(account, reader, writer):
         return
     await asyncio.sleep(5)
-    message_to_send = re.sub('[^A-Za-zА-Яа-я0-9 ]+', '', options.message)
+    message_to_send = re.sub('[^A-Za-zА-Яа-я0-9 ]+', '', message)
     log.debug(message_to_send)
     writer.write((message_to_send+'\n\n').encode())
+    await writer.drain()
     writer.close()
 
 
-async def main(options):
+async def main(
+    host: str,
+    port: int,
+    account: str,
+    username: str,
+    message: str
+):
     loop = asyncio.get_event_loop()
-    if options.username:
-        register = loop.create_task(register_user(options))
+    if username:
+        register = loop.create_task(
+            register_user(host, port, username)
+        )
         await register
         return
-    if not options.ACCOUNT:
+    if not account:
         log.debug('Требуется запуск с ключём --username')
         return
-    write_func = loop.create_task(submit_message(options))
+    write_func = loop.create_task(
+        submit_message(host, port, account, message)
+    )
     await write_func
 
 
@@ -88,9 +98,6 @@ if __name__ == '__main__':
         '-p', '--port', default=5050, help='port to use'
     )
     configs.add(
-        '-l', '--history', default='chat.log', help='file to log'
-    )
-    configs.add(
         '-acc', '--ACCOUNT', default=None,
         help='Token is taken from .my_settings'
     )
@@ -101,7 +108,11 @@ if __name__ == '__main__':
         '-m', '--message', required=True, help='Text to send'
     )
     options = configs.parse_args()
+
     try:
-        asyncio.run(main(options))
+        asyncio.run(main(
+            options.host, options.port, options.ACCOUNT,
+            options.username, options.message
+        ))
     except KeyboardInterrupt:
         pass
