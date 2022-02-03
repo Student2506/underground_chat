@@ -1,6 +1,7 @@
 import asyncio
 import datetime as dt
 import sys
+from contextlib import suppress
 
 import aiofiles
 import configargparse
@@ -53,10 +54,8 @@ if __name__ == '__main__':
         help='Token is taken from .my_settings (not-used in server-side)'
     )
     options = configs.parse_args()
-    try:
+    with suppress(KeyboardInterrupt):
         asyncio.run(main(
             host=options.host,
             port=options.port,
             history=options.history))
-    except KeyboardInterrupt:
-        pass

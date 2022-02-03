@@ -3,6 +3,7 @@ import json
 import logging
 import re
 import sys
+from contextlib import suppress
 
 import aiofiles
 import configargparse
@@ -109,10 +110,8 @@ if __name__ == '__main__':
     )
     options = configs.parse_args()
 
-    try:
+    with suppress(KeyboardInterrupt):
         asyncio.run(main(
             options.host, options.port, options.ACCOUNT,
             options.username, options.message
         ))
-    except KeyboardInterrupt:
-        pass
