@@ -10,14 +10,12 @@ if (sys.version_info[0] == 3 and sys.version_info[1] >= 8 and
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 
-async def read_message(options):
-    reader, _ = await asyncio.open_connection(
-        options.host, options.port
-    )
+async def read_message(host: str, port: int, history: str):
+    reader, _ = await asyncio.open_connection(host, port)
 
     while True:
         async with aiofiles.open(
-            options.history, mode='a', encoding='utf-8'
+            history, mode='a', encoding='utf-8'
         ) as f:
             data = await reader.readline()
             print(
@@ -30,9 +28,11 @@ async def read_message(options):
         await asyncio.sleep(0)
 
 
-async def main(options):
+async def main(host: str, port: int, history: str):
     loop = asyncio.get_event_loop()
-    read_func = loop.create_task(read_message(options))
+    read_func = loop.create_task(
+        read_message(host=host, port=port, history=history)
+    )
     while True:
         await read_func
 
@@ -49,10 +49,14 @@ if __name__ == '__main__':
         '-l', '--history', default='chat.log', help='file to log'
     )
     configs.add(
-        '-acc', '--ACCOUNT', default=None, help='Account to use'
+        '-acc', '--ACCOUNT', default=None,
+        help='Token is taken from .my_settings (not-used in server-side)'
     )
     options = configs.parse_args()
     try:
-        asyncio.run(main(options))
+        asyncio.run(main(
+            host=options.host,
+            port=options.port,
+            history=options.history))
     except KeyboardInterrupt:
         pass
