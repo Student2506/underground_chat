@@ -10,6 +10,7 @@ from tkinter import TclError, messagebox
 
 import aiofiles
 import configargparse
+from anyio import create_task_group, run
 from async_timeout import timeout
 
 import gui
@@ -129,48 +130,11 @@ async def watch_for_connection(watchdog_queue: asyncio.Queue):
                 print(f'[{int(time.time())}] 1s timeout is elapsed.')
 
 
-async def main(
-    host: str,
-    port: int,
-    history_filename: str,
-    account: str,
-    send_port: int
-):
-    logging.basicConfig(level=logging.DEBUG, format=FORMAT)
-    messages_queue = asyncio.Queue()
-    sending_queue = asyncio.Queue()
-    status_updates_queue = asyncio.Queue()
-    logging_queue = asyncio.Queue()
-    watchdog_queue = asyncio.Queue()
-    async with aiofiles.open(
-        history_filename, mode='r', encoding='utf-8'
-    ) as f:
-        history = await f.readlines()
-    for line in history:
-        messages_queue.put_nowait(line.rstrip())
-    tasks = []
-    tasks.append(gui.draw(messages_queue, sending_queue, status_updates_queue))
-    tasks.append(read_msgs(
-        host, port, messages_queue, logging_queue, status_updates_queue,
-        watchdog_queue
-    ))
-    tasks.append(save_messages(history_filename, logging_queue))
-    tasks.append(send_msgs(
-        host, send_port, sending_queue, account, logging_queue,
-        status_updates_queue, watchdog_queue
-    ))
-    tasks.append(watch_for_connection(watchdog_queue))
-    try:
-        await asyncio.gather(
-            *tasks, return_exceptions=True
-        )
-    except InvalidToken:
-        messagebox.showerror(
-            "Неверный токен", "Проверьте токен, сервер не узнал его."
-        )
+async def handle_connection():
+    pass
 
 
-if __name__ == '__main__':
+async def main():
     configs = configargparse.ArgParser(default_config_files=['.my_settings', ])
     configs.add(
         '-s', '--host', default='minechat.dvmn.org', help='host to connect'
@@ -193,9 +157,44 @@ if __name__ == '__main__':
     )
     options = configs.parse_args()
 
+    host = options.host
+    port = options.port
+    history_filename = options.history
+    account = options.ACCOUNT
+    send_port = options.secondary_port
+
+    logging.basicConfig(level=logging.DEBUG, format=FORMAT)
+    messages_queue = asyncio.Queue()
+    sending_queue = asyncio.Queue()
+    status_updates_queue = asyncio.Queue()
+    logging_queue = asyncio.Queue()
+    watchdog_queue = asyncio.Queue()
+    async with aiofiles.open(
+        history_filename, mode='r', encoding='utf-8'
+    ) as f:
+        history = await f.readlines()
+    for line in history:
+        messages_queue.put_nowait(line.rstrip())
+    try:
+        async with create_task_group() as tg:
+            tg.start_soon(
+                gui.draw, messages_queue, sending_queue, status_updates_queue
+            )
+            tg.start_soon(
+                read_msgs, host, port, messages_queue, logging_queue,
+                status_updates_queue, watchdog_queue
+            )
+            tg.start_soon(save_messages, history_filename, logging_queue)
+            tg.start_soon(
+                send_msgs, host, send_port, sending_queue, account,
+                logging_queue, status_updates_queue, watchdog_queue
+            )
+    except InvalidToken:
+        messagebox.showerror(
+            "Неверный токен", "Проверьте токен, сервер не узнал его."
+        )
+
+
+if __name__ == '__main__':
     with suppress(KeyboardInterrupt, TclError):
-        asyncio.run(
-            main(
-                options.host, options.port, options.history, options.ACCOUNT,
-                options.secondary_port
-            ))
+        run(main)
