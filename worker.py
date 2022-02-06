@@ -156,6 +156,8 @@ async def main():
         '-send', '--secondary_port', default=5050, help='port to send messages'
     )
     options = configs.parse_args()
+    print(options)
+    exit()
 
     host = options.host
     port = options.port
