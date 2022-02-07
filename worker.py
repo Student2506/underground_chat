@@ -128,10 +128,27 @@ async def watch_for_connection(watchdog_queue: asyncio.Queue):
         except asyncio.TimeoutError:
             if cm.expired:
                 print(f'[{int(time.time())}] 1s timeout is elapsed.')
+                raise ConnectionError
 
 
-async def handle_connection():
-    pass
+async def handle_connection(
+    host, port, account, send_port, messages_queue,
+    sending_queue, status_updates_queue, logging_queue, watchdog_queue
+):
+    while True:
+        try:
+            async with create_task_group() as tg:
+                tg.start_soon(
+                    read_msgs, host, port, messages_queue, logging_queue,
+                    status_updates_queue, watchdog_queue
+                )
+                tg.start_soon(
+                    send_msgs, host, send_port, sending_queue, account,
+                    logging_queue, status_updates_queue, watchdog_queue
+                )
+                tg.start_soon(watch_for_connection, watchdog_queue)
+        except ConnectionError:
+            tg.cancel_scope.cancel()
 
 
 async def main():
@@ -178,16 +195,14 @@ async def main():
     try:
         async with create_task_group() as tg:
             tg.start_soon(
-                gui.draw, messages_queue, sending_queue, status_updates_queue
-            )
-            tg.start_soon(
-                read_msgs, host, port, messages_queue, logging_queue,
-                status_updates_queue, watchdog_queue
+                gui.draw, messages_queue, sending_queue,
+                status_updates_queue
             )
             tg.start_soon(save_messages, history_filename, logging_queue)
             tg.start_soon(
-                send_msgs, host, send_port, sending_queue, account,
-                logging_queue, status_updates_queue, watchdog_queue
+                handle_connection, host, port, account, send_port,
+                messages_queue, sending_queue, status_updates_queue,
+                logging_queue, watchdog_queue
             )
     except InvalidToken:
         messagebox.showerror(
