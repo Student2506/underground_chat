@@ -6,12 +6,14 @@ import re
 import sys
 import time
 from contextlib import suppress
+from socket import gaierror
 from tkinter import TclError, messagebox
 
 import aiofiles
 import configargparse
 from anyio import create_task_group, run
 from async_timeout import timeout
+from trio import MultiError
 
 import gui
 
@@ -119,7 +121,9 @@ async def send_msgs(
         )
 
 
-async def watch_for_connection(watchdog_queue: asyncio.Queue):
+async def watch_for_connection(
+    watchdog_queue: asyncio.Queue, sending_queue: asyncio.Queue
+):
     while True:
         try:
             async with timeout(1.0) as cm:
@@ -128,7 +132,7 @@ async def watch_for_connection(watchdog_queue: asyncio.Queue):
         except asyncio.TimeoutError:
             if cm.expired:
                 print(f'[{int(time.time())}] 1s timeout is elapsed.')
-                raise ConnectionError
+                sending_queue.put_nowait('')
 
 
 async def handle_connection(
@@ -146,9 +150,14 @@ async def handle_connection(
                     send_msgs, host, send_port, sending_queue, account,
                     logging_queue, status_updates_queue, watchdog_queue
                 )
-                tg.start_soon(watch_for_connection, watchdog_queue)
+                tg.start_soon(
+                    watch_for_connection, watchdog_queue, sending_queue
+                )
         except ConnectionError:
             tg.cancel_scope.cancel()
+        except (gaierror, MultiError):
+            tg.cancel_scope.cancel()
+            return
 
 
 async def main():

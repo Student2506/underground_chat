@@ -2,3 +2,4 @@ aiofiles==0.8.0
 ConfigArgParse==1.5.3
 async-timeout==4.0.2
 anyio==3.5.0
+trio==0.19.0
