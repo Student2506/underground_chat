@@ -17,6 +17,7 @@ from trio import MultiError
 
 import gui
 
+RECONNECT_TIMEOUT = 10
 FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 
 watchdog_logger = logging.getLogger(__name__)
@@ -156,8 +157,9 @@ async def handle_connection(
         except ConnectionError:
             tg.cancel_scope.cancel()
         except (gaierror, MultiError):
+            logging_queue.put_nowait('Повторное соединение')
             tg.cancel_scope.cancel()
-            return
+            await asyncio.sleep(RECONNECT_TIMEOUT)
 
 
 async def main():
