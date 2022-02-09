@@ -156,6 +156,7 @@ async def handle_connection(
                 )
         except ConnectionError:
             tg.cancel_scope.cancel()
+            await asyncio.sleep(RECONNECT_TIMEOUT)
         except (gaierror, MultiError):
             logging_queue.put_nowait('Повторное соединение')
             tg.cancel_scope.cancel()
