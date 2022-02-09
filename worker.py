@@ -43,7 +43,7 @@ async def save_messages(filepath: str, queue: asyncio.Queue):
 async def read_msgs(
     host: str,
     port: int,
-    queue: asyncio.Queue,
+    messages_queue: asyncio.Queue,
     logging_queue: asyncio.Queue,
     status_queue: asyncio.Queue,
     watchdog_queue: asyncio.Queue
@@ -65,7 +65,7 @@ async def read_msgs(
             f'{dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S")} '
             f'{data.decode().rstrip()}'
         )
-        queue.put_nowait(
+        messages_queue.put_nowait(
             f'{dt.datetime.now().strftime("%d/%m/%Y %H:%M:%S")} '
             f'{data.decode().rstrip()}')
 
@@ -73,7 +73,7 @@ async def read_msgs(
 async def send_msgs(
     host: str,
     port: int,
-    queue: asyncio.Queue,
+    sending_queue: asyncio.Queue,
     account: str,
     logging_queue: asyncio.Queue,
     status_queue: asyncio.Queue,
@@ -113,7 +113,7 @@ async def send_msgs(
         logging_queue.put_nowait('Соединение не установлено')
         return
     while True:
-        msg = await queue.get()
+        msg = await sending_queue.get()
         message_to_send = re.sub('[^A-Za-zА-Яа-я0-9 ]+', '', msg)
         writer.write((message_to_send+'\n\n').encode())
         await writer.drain()
