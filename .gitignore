@@ -130,3 +130,5 @@ dmypy.json
 
 .my_settings
 .vscode
+reciever.py
+sender.py
